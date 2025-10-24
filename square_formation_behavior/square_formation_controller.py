@@ -2,6 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from example_interfaces.msg import Empty
@@ -12,20 +13,25 @@ class SquareFormationController(Node):
         super().__init__('square_formation_controller')
         
         # Declare parameters for robot namespaces
-        self.declare_parameter('robot_namespaces', ['aire1', 'agua2', 'tierra3', 'fuego4'])
+        self.declare_parameter('robot_namespaces', ['tierra3', 'fuego4', 'aire1', 'agua2'])
         self.declare_parameter('square_size', 1.0)  # meters
-        self.declare_parameter('position_tolerance', 0.08)  # meters
-        self.declare_parameter('angle_tolerance', 0.15)  # radians (~8.6 degrees)
+        self.declare_parameter('position_tolerance', 0.10)  # meters (relaxed for real robots)
+        self.declare_parameter('angle_tolerance', 0.20)  # radians (~11.5 degrees)
+        self.declare_parameter('min_robots', 2)  # Allow testing with fewer robots
         
         # Get parameters
         robot_list = self.get_parameter('robot_namespaces').value
         square_size = self.get_parameter('square_size').value
         self.position_tol = self.get_parameter('position_tolerance').value
         self.angle_tol = self.get_parameter('angle_tolerance').value
+        min_robots = self.get_parameter('min_robots').value
+        
+        if len(robot_list) < min_robots:
+            self.get_logger().error(f'At least {min_robots} robots required!')
+            raise ValueError(f'Must provide at least {min_robots} robot namespaces')
         
         if len(robot_list) != 4:
-            self.get_logger().error('Exactly 4 robots required!')
-            raise ValueError('Must provide exactly 4 robot namespaces')
+            self.get_logger().warn(f'Only {len(robot_list)} robots configured. Full formation requires 4 robots.')
         
         # Store robot names
         self.robot_names = robot_list
@@ -48,6 +54,14 @@ class SquareFormationController(Node):
         # Movement state
         self.is_moving = False
         
+        # QoS profile for real robot communication
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=10
+        )
+        
         # Velocity publishers for each robot
         self.vel_publishers = {}
         for robot in robot_list:
@@ -63,7 +77,7 @@ class SquareFormationController(Node):
                 Odometry, 
                 topic,
                 lambda msg, r=robot: self.odom_callback(msg, r), 
-                10
+                qos_profile
             )
             self.get_logger().info(f'Subscribing to {topic}')
         

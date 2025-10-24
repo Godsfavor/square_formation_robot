@@ -6,7 +6,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
     
     # Robot namespaces (modify these to match your actual robots)
-    robot_namespaces = ['tb_202', 'tb_204', 'tb_205', 'tb_206']
+    # Using only 2 robots for now: tierra3 (205) and fuego4 (206)
+    robot_namespaces = ['tierra3', 'fuego4', 'aire1', 'agua2']  # Update when you add more robots
     
     # Square formation controller node
     formation_controller = Node(
@@ -17,12 +18,13 @@ def generate_launch_description():
         parameters=[{
             'robot_namespaces': robot_namespaces,
             'square_size': 1.0,  # 1m x 1m square
-            'position_tolerance': 0.08,
-            'angle_tolerance': 0.15
+            'position_tolerance': 0.10,
+            'angle_tolerance': 0.20,
+            'min_robots': 2
         }]
     )
     
-    # Static transforms: Connect all robot odom frames to tb_202/odom (first robot as root)
+    # Static transforms: Connect all robot odom frames to tierra3/odom (first robot as root)
     # This creates a common reference frame for all robots
     root_frame = f'{robot_namespaces[0]}/odom'
     
@@ -32,7 +34,7 @@ def generate_launch_description():
             Node(
                 package='tf2_ros',
                 executable='static_transform_publisher',
-                name=f'{root_frame}_to_{robot}_odom',
+                name=f'static_tf_{root_frame.replace("/", "_")}_to_{robot.replace("/", "_")}_odom',
                 arguments=['0', '0', '0', '0', '0', '0', root_frame, f'{robot}/odom'],
                 output='screen'
             )
