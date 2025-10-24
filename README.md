@@ -17,7 +17,6 @@ R4 ---- R3              R3 ---- R2               R1 ---- R4
 ## Prerequisites
 
 - **ROS 2 Humble** (or compatible version)
-- **Gazebo** (Gazebo Classic 11)
 - **Python 3.8+**
 - **TurtleBot3 packages** (provided via multi_turtlebot_sim)
 
